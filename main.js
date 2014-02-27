@@ -15,12 +15,19 @@ nconf.argv()
 // Start number of containers equal to num cpus
 var startPromises = [];
 _.each(os.cpus(), function() {
-  startPromises.push(qDocker.makeContainer({
-      Image: 'stanleygu/engine-cylinder'
+  startPromises.push(qDocker.makeContainer(nconf.get('cylinder').image)
+    .then(function(container) {
+      return qDocker.startContainer(container, nconf.get('cylinder').portBindings);
     })
     .then(function(container) {
-      return qDocker.startContainer(container);
-    }));
+      console.log(container);
+      return Q.ninvoke(container, 'inspect').then(function(data) {
+        qDocker.addPortmap(container, data.NetworkSettings.Ports);
+        console.log(container.portMap);
+        return container;
+      });
+    })
+  );
 });
 
 Q.all(startPromises).then(function(containers) {
@@ -33,15 +40,20 @@ Q.all(startPromises).then(function(containers) {
       port: conf.port
     }
   });
-  q.process('sim', function(job, done) {
-    console.log('Processing job:', job.data);
-    done();
+
+  _.each(containers, function(container, i){
+    q.process('sim', function(job, done) {
+
+      console.log('Container ' + i + ' is processing job: ' +  JSON.stringify(job.data));
+      done();
+    });
   });
-  // var closePromises = qDocker.removeAllContainers();
-  // Q.all(closePromises).then(function() {
-  //   process.exit(1);
-  // });
+}, function(err) {
+  console.log('Error occurred', err);
+  var closePromises = qDocker.removeAllContainers();
+  Q.all(closePromises).then(function() {
+    process.exit(1);
+  });
 });
 
 qDocker.closeContainersOnExit();
-
