@@ -1,0 +1,32 @@
+{
+  "name": "sim-engine-block",
+  "version": "0.0.1",
+  "description": "Runs simulation engine block for cylinders",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/stanleygu/sim-engine-block.git"
+  },
+  "keywords": [
+    "docker",
+    "simulation",
+    "sbml"
+  ],
+  "author": "Stanley Gu <stanleygu@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/stanleygu/sim-engine-block/issues"
+  },
+  "homepage": "https://github.com/stanleygu/sim-engine-block",
+  "dependencies": {
+    "docker-sim-engine-cylinder": "git://github.com/stanleygu/docker-sim-engine-cylinder.git",
+    "kue": "^0.7.5",
+    "nconf": "^0.6.9",
+    "q-dockerode": "git://github.com/stanleygu/q-dockerode.git",
+    "q": "^1.0.0",
+    "lodash": "^2.4.1"
+  }
+}
