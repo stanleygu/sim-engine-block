@@ -19,3 +19,6 @@ sudo apt-get -y install git nodejs
 sudo add-apt-repository -y ppa:chris-lea/zeromq
 sudo apt-get -y update
 sudo apt-get install -y libzmq3-dev g++
+
+# Pull docker engine cylinder
+sudo docker pull stanleygu/engine-cylinder
