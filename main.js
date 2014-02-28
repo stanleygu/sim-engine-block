@@ -35,12 +35,14 @@ Q.all(startPromises).then(function(containers) {
   console.log('Started these containers: ');
   console.log(containers);
   var conf = nconf.get('redis');
-  var q = kue.createQueue({
+  var jobs = kue.createQueue({
     redis: {
       host: conf.host,
       port: conf.port
     }
   });
+
+  var redisClient = kue.redis.client();
 
   _.each(containers, function(container, i) {
     var rpcClient = new zerorpc.Client();
@@ -57,20 +59,44 @@ Q.all(startPromises).then(function(containers) {
       }, function(err) {
         console.log(err);
       });
-    q.process('sim', function(job, done) {
+    jobs.process('sim', function(job, done) {
       console.log('Container ' + i + ' is processing sim job: ' + JSON.stringify(job.data.params));
       if (!job.data.sbml) {
         done('No SBML in job');
       }
       Q.npost(rpcClient, 'invoke', ['rrRun', 'load', [job.data.sbml.string]])
-      .then(function() {
-        return Q.npost(rpcClient, 'invoke', ['rrRun', 'simulate', []]);
-      })
+        .then(function() {
+          console.log('Loaded model, now setting parameters');
+          var parameterSetPromises = [];
+          var params = _.keys(job.data.params);
+          _.each(params, function(p) {
+            parameterSetPromises.push(
+              Q.npost(rpcClient, 'invoke', ['setParameterValueById', {id: p, value: job.data.params[p]}]));
+          });
+          return Q.all(parameterSetPromises);
+        })
+        .then(function() {
+          console.log('Set parameters, now simulating...');
+          // this way the next return function can access the sim data
+          var time = job.data.time;
+          return Q.npost(rpcClient, 'invoke', ['rrRun', 'simulate', [time.start, time.end, time.steps]]);
+        })
         .then(function(res) {
-          console.log(res);
+          console.log('Simulation complete!');
+          console.log('Last time point:', _.last(res[0]));
+          var name = job.data.sbml.name;
+          var params = _.keys(job.data.params);
+          redisClient.sadd('global:sims', name);
+          _.each(params, function(p) {
+            redisClient.sadd('sim:' + name + ':params', p);
+            var value = job.data.params[p];
+            redisClient.sadd('sim:' + name + ':param:' + p + ':values', value);
+            redisClient.set('sim:' + name + ':param:' + p + ':' + value, JSON.stringify(res[0]));
+          });
           done();
-        }, function(err) {
-          console.log(err);
+        })
+        .catch(function(err) {
+          console.log('Error', err);
           done(err);
         });
     });
