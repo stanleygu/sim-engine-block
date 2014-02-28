@@ -5,6 +5,7 @@ var qDocker = require('q-dockerode');
 var os = require('os');
 var Q = require('q');
 var _ = require('lodash');
+var zerorpc = require('zerorpc');
 
 nconf.argv()
   .env()
@@ -41,11 +42,37 @@ Q.all(startPromises).then(function(containers) {
     }
   });
 
-  _.each(containers, function(container, i){
-    q.process('sim', function(job, done) {
+  _.each(containers, function(container, i) {
+    var rpcClient = new zerorpc.Client();
+    rpcClient.connect('tcp://127.0.0.1:' +
+      container.portMap[nconf.get('cylinder').rpcPort]);
+    // check that rpc server is connected
+    Q.ninvoke(rpcClient, 'invoke', 'getVersion').then(function(res) {
+      console.log(res);
+    });
 
-      console.log('Container ' + i + ' is processing job: ' +  JSON.stringify(job.data));
-      done();
+    Q.npost(rpcClient, 'invoke', ['rrRun', 'getInfo', []])
+      .then(function(res) {
+        console.log(res);
+      }, function(err) {
+        console.log(err);
+      });
+    q.process('sim', function(job, done) {
+      console.log('Container ' + i + ' is processing sim job: ' + JSON.stringify(job.data.params));
+      if (!job.data.sbml) {
+        done('No SBML in job');
+      }
+      Q.npost(rpcClient, 'invoke', ['rrRun', 'load', [job.data.sbml.string]])
+      .then(function() {
+        return Q.npost(rpcClient, 'invoke', ['rrRun', 'simulate', []]);
+      })
+        .then(function(res) {
+          console.log(res);
+          done();
+        }, function(err) {
+          console.log(err);
+          done(err);
+        });
     });
   });
 }, function(err) {
