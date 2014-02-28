@@ -1,0 +1,24 @@
+{
+  "redis": {
+    "host": "127.0.0.1",
+    "port": "49153"
+  },
+  "cylinder": {
+    "rpcPort": "3131",
+    "portBindings": {
+      "PortBindings": {
+        "3131/tcp": [{
+          "HostPort": ""
+        }]
+      }
+    },
+    "image": {
+      "Image": "stanleygu/engine-cylinder"
+    }
+  },
+  "kue": {
+    "app": {
+      "port": 49800
+    }
+  }
+}
