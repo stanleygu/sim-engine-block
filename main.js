@@ -45,12 +45,14 @@ Q.all(startPromises).then(function(containers) {
   var redisClient = kue.redis.client();
 
   _.each(containers, function(container, i) {
+    console.log('Attempting to connect to RPC Server at ' + 'tcp://127.0.0.1:' +
+                container.portMap[nconf.get('cylinder').rpcPort]);
     var rpcClient = new zerorpc.Client();
     rpcClient.connect('tcp://127.0.0.1:' +
       container.portMap[nconf.get('cylinder').rpcPort]);
     // check that rpc server is connected
     Q.ninvoke(rpcClient, 'invoke', 'getVersion').then(function(res) {
-      console.log(res);
+      console.log(JSON.stringify(res, undefined, 2));
     });
 
     Q.npost(rpcClient, 'invoke', ['rrRun', 'getInfo', []])
@@ -91,12 +93,12 @@ Q.all(startPromises).then(function(containers) {
             redisClient.sadd('sim:' + name + ':params', p);
             var value = job.data.params[p];
             redisClient.sadd('sim:' + name + ':param:' + p + ':values', value);
-            redisClient.set('sim:' + name + ':param:' + p + ':' + value, JSON.stringify(res[0]));
+            redisClient.set('sim:' + name + ':param:' + p + ':' + value, JSON.stringify(res[0], undefined, 2));
           });
-          done();
+          done(null, res); // Pass result back
         })
         .catch(function(err) {
-          console.log('Error', err);
+          console.log('Error', JSON.stringify(err, undefined, 2));
           done(err);
         });
     });
