@@ -13,6 +13,7 @@ nconf.argv()
     file: 'config.json'
   });
 
+
 // Start number of containers equal to num cpus
 var startPromises = [];
 _.each(os.cpus(), function() {
@@ -41,6 +42,8 @@ Q.all(startPromises).then(function(containers) {
       port: conf.port
     }
   });
+  console.log('View simulation job queue at: http://127.0.0.1:' + nconf.get('kue').app.port);
+  kue.app.listen(nconf.get('kue').app.port);
 
   var redisClient = kue.redis.client();
 
@@ -93,9 +96,11 @@ Q.all(startPromises).then(function(containers) {
             redisClient.sadd('sim:' + name + ':params', p);
             var value = job.data.params[p];
             redisClient.sadd('sim:' + name + ':param:' + p + ':values', value);
-            redisClient.set('sim:' + name + ':param:' + p + ':' + value, JSON.stringify(res[0], undefined, 2));
+            redisClient.set('sim:' + name + ':param:' + p + ':' + value, JSON.stringify(res[0]));
           });
-          done(null, res); // Pass result back
+          redisClient.set('sim:' + name, JSON.stringify(res[0]));
+          redisClient.expire('sim:' + name, 60); // Expires in 60 seconds
+          done(null); // Passing result back here doesn't work for some reason
         })
         .catch(function(err) {
           console.log('Error', JSON.stringify(err, undefined, 2));
