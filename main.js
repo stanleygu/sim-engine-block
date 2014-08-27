@@ -68,7 +68,7 @@ Q.all(startPromises).then(function(containers) {
 
     var loadedModelHash;
     jobs.process('sim', function(job, done) {
-      console.log('Container ' + i + ' is processing sim job: ' + JSON.stringify(job.data.params));
+      console.log('Container ' + i + ' is processing sim job: ' + JSON.stringify(job.data.sbml.name));
       if (!job.data.sbml) {
         done('No SBML in job');
       }
@@ -90,6 +90,7 @@ Q.all(startPromises).then(function(containers) {
           var parameterSetPromises = [];
           var params = _.keys(job.data.params);
           _.each(params, function(p) {
+            console.log('Setting parameter %s to %s', p, job.data.params[p]);
             parameterSetPromises.push(
               Q.npost(rpcClient, 'invoke', ['setParameterValueById', {id: p, value: job.data.params[p]}]));
           });
@@ -103,7 +104,6 @@ Q.all(startPromises).then(function(containers) {
         })
         .then(function(res) {
           console.log('Simulation complete!');
-          console.log('Last time point:', _.last(res[0]));
           var name = job.data.sbml.name;
           var params = _.keys(job.data.params);
           redisClient.sadd('global:sims', name);
