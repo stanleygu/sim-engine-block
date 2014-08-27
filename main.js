@@ -78,7 +78,7 @@ Q.all(startPromises).then(function(containers) {
       var newModelHash = md5sum.digest('hex');
       if (newModelHash === loadedModelHash) {
         console.log('Model already loaded');
-        start = Q.npost(rpcClient, 'invoke', ['getVersion']);
+        start = Q.npost(rpcClient, 'invoke', ['rrRun', 'reset', []]);
       } else {
         console.log('New model to load');
         start = Q.npost(rpcClient, 'invoke', ['rrRun', 'load', [job.data.sbml.string]]);
