@@ -6,6 +6,7 @@ var os = require('os');
 var Q = require('q');
 var _ = require('lodash');
 var zerorpc = require('zerorpc');
+var crypto = require('crypto');
 
 nconf.argv()
   .env()
@@ -64,12 +65,26 @@ Q.all(startPromises).then(function(containers) {
       }, function(err) {
         console.log(err);
       });
+
+    var loadedModelHash;
     jobs.process('sim', function(job, done) {
       console.log('Container ' + i + ' is processing sim job: ' + JSON.stringify(job.data.params));
       if (!job.data.sbml) {
         done('No SBML in job');
       }
-      Q.npost(rpcClient, 'invoke', ['rrRun', 'load', [job.data.sbml.string]])
+      var start;
+      var md5sum = crypto.createHash('md5');
+      md5sum.update(job.data.sbml.string);
+      var newModelHash = md5sum.digest('hex');
+      if (newModelHash === loadedModelHash) {
+        console.log('Model already loaded');
+        start = Q.npost(rpcClient, 'invoke', ['getVersion']);
+      } else {
+        console.log('New model to load');
+        start = Q.npost(rpcClient, 'invoke', ['rrRun', 'load', [job.data.sbml.string]]);
+        loadedModelHash = newModelHash;
+      }
+      start
         .then(function() {
           console.log('Loaded model, now setting parameters');
           var parameterSetPromises = [];
